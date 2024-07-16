@@ -1,0 +1,105 @@
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+#include <Servo.h>
+
+// Blynk Auth Token
+char auth[] = "YourAuthToken";
+
+// Wi-Fi credentials
+char ssid[] = "YourSSID";
+char pass[] = "YourPassword";
+
+// Define pins
+#define RFID_PIN 2
+#define IR_SENSOR_PIN A0
+#define RED_LED_PIN 3
+#define YELLOW_LED_PIN 4
+#define GREEN_LED_PIN 5
+#define BUZZER_PIN 6
+#define SERVO_PIN 7
+
+Servo barrierServo;
+
+void setup() {
+  // Initialize serial communication
+  Serial.begin(9600);
+  
+  // Initialize Blynk
+  Blynk.begin(auth, ssid, pass);
+
+  // Initialize RFID reader pin as input
+  pinMode(RFID_PIN, INPUT);
+
+  // Initialize IR sensor pin as input
+  pinMode(IR_SENSOR_PIN, INPUT);
+
+  // Initialize LED pins as output
+  pinMode(RED_LED_PIN, OUTPUT);
+  pinMode(YELLOW_LED_PIN, OUTPUT);
+  pinMode(GREEN_LED_PIN, OUTPUT);
+
+  // Initialize buzzer pin as output
+  pinMode(BUZZER_PIN, OUTPUT);
+
+  // Attach the servo to the pin
+  barrierServo.attach(SERVO_PIN);
+  barrierServo.write(0); // Barrier initially closed
+}
+
+void loop() {
+  // Run Blynk
+  Blynk.run();
+  
+  // Read traffic density
+  int trafficDensity = analogRead(IR_SENSOR_PIN);
+
+  // Determine traffic light state based on traffic density
+  if (trafficDensity > 800) {
+    // High traffic density
+    setTrafficLight(RED_LED_PIN);
+  } else if (trafficDensity > 400) {
+    // Medium traffic density
+    setTrafficLight(YELLOW_LED_PIN);
+  } else {
+    // Low traffic density
+    setTrafficLight(GREEN_LED_PIN);
+  }
+  
+  // Check for emergency vehicle detection
+  if (digitalRead(RFID_PIN) == HIGH) {
+    handleEmergencyVehicle();
+  }
+
+  // Monitor traffic violators (simulated with random values)
+  if (random(0, 100) > 90) {
+    handleTrafficViolation();
+  }
+
+  // Update Blynk with traffic status
+  Blynk.virtualWrite(V1, trafficDensity);
+  
+  // Wait before next read
+  delay(1000);
+}
+
+void setTrafficLight(int lightPin) {
+  digitalWrite(RED_LED_PIN, lightPin == RED_LED_PIN);
+  digitalWrite(YELLOW_LED_PIN, lightPin == YELLOW_LED_PIN);
+  digitalWrite(GREEN_LED_PIN, lightPin == GREEN_LED_PIN);
+}
+
+void handleEmergencyVehicle() {
+  // Open the barrier for emergency vehicle
+  barrierServo.write(90); // Open barrier
+  Blynk.notify("Emergency vehicle detected! Opening barrier.");
+  delay(5000); // Simulate time for the vehicle to pass
+  barrierServo.write(0); // Close barrier
+}
+
+void handleTrafficViolation() {
+  // Trigger alert for traffic violation
+  digitalWrite(BUZZER_PIN, HIGH);
+  Blynk.notify("Traffic violation detected!");
+  delay(1000);
+  digitalWrite(BUZZER_PIN, LOW);
+}
