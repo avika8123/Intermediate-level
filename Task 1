@@ -1,0 +1,89 @@
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+#include <DHT.h>
+#include <Servo.h>
+
+// Blynk Auth Token
+char auth[] = "YourAuthToken";
+
+// Wi-Fi credentials
+char ssid[] = "YourSSID";
+char pass[] = "YourPassword";
+
+// DHT11 sensor pin
+#define DHTPIN 2
+#define DHTTYPE DHT11
+
+// Sound sensor pin
+#define SOUND_SENSOR_PIN A0
+
+// Camera (simulate with LED)
+#define CAMERA_LED_PIN 13
+
+// LCD pins
+#include <LiquidCrystal.h>
+LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
+
+DHT dht(DHTPIN, DHTTYPE);
+
+void setup() {
+  // Initialize serial communication
+  Serial.begin(9600);
+  
+  // Initialize Blynk
+  Blynk.begin(auth, ssid, pass);
+
+  // Initialize DHT11 sensor
+  dht.begin();
+
+  // Initialize sound sensor pin as input
+  pinMode(SOUND_SENSOR_PIN, INPUT);
+
+  // Initialize camera LED pin as output
+  pinMode(CAMERA_LED_PIN, OUTPUT);
+  digitalWrite(CAMERA_LED_PIN, LOW);
+
+  // Initialize LCD
+  lcd.begin(16, 2);
+}
+
+void loop() {
+  // Run Blynk
+  Blynk.run();
+  
+  // Read temperature and humidity
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+  
+  // Read sound sensor value
+  int soundValue = analogRead(SOUND_SENSOR_PIN);
+  
+  // Update LCD display
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Temp: ");
+  lcd.print(temperature);
+  lcd.print(" C");
+  lcd.setCursor(0, 1);
+  lcd.print("Humidity: ");
+  lcd.print(humidity);
+  lcd.print(" %");
+
+  // Report to Blynk
+  Blynk.virtualWrite(V1, temperature);
+  Blynk.virtualWrite(V2, humidity);
+  
+  // Cry detection and alert
+  if (soundValue > 500) { // Adjust threshold as necessary
+    Blynk.notify("Baby is crying!");
+    // Turn on camera LED (simulate video feed activation)
+    digitalWrite(CAMERA_LED_PIN, HIGH);
+    Blynk.virtualWrite(V3, "CRY DETECTED");
+  } else {
+    digitalWrite(CAMERA_LED_PIN, LOW);
+    Blynk.virtualWrite(V3, "No Cry");
+  }
+
+  // Wait before next read
+  delay(1000);
+}
